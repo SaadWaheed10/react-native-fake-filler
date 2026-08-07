@@ -1,0 +1,81 @@
+{
+  "name": "react-native-fake-filler",
+  "version": "0.1.0",
+  "description": "Intelligent, zero-config fake form filling for React Native. Auto-detects fields and populates them with realistic, unique, validation-aware fake data for development, QA, and automated testing.",
+  "main": "lib/commonjs/index.js",
+  "module": "lib/module/index.js",
+  "types": "lib/typescript/index.d.ts",
+  "react-native": "src/index.ts",
+  "source": "src/index.ts",
+  "files": [
+    "src",
+    "lib",
+    "android",
+    "ios",
+    "react-native-fake-filler.podspec",
+    "!lib/typescript/example",
+    "!**/__tests__",
+    "!**/*.test.*"
+  ],
+  "scripts": {
+    "build": "bob build",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.{ts,tsx}\"",
+    "test": "jest",
+    "prepare": "bob build",
+    "clean": "rimraf lib"
+  },
+  "keywords": [
+    "react-native",
+    "expo",
+    "fake-data",
+    "form-filling",
+    "faker",
+    "testing",
+    "qa",
+    "e2e",
+    "detox",
+    "maestro",
+    "mock-data",
+    "typescript"
+  ],
+  "author": "Saad Waheed Khan",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saadwaheed10/react-native-fake-filler.git"
+  },
+  "homepage": "https://github.com/saadwaheed10/react-native-fake-filler#readme",
+  "bugs": {
+    "url": "https://github.com/saadwaheed10/react-native-fake-filler/issues"
+  },
+  "peerDependencies": {
+    "react": ">=17.0.0",
+    "react-native": ">=0.64.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-native": "^0.72.0",
+    "react": "18.2.0",
+    "react-native": "0.74.0",
+    "react-native-builder-bob": "^0.23.0",
+    "typescript": "^5.4.0",
+    "rimraf": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "react-native-builder-bob": {
+    "source": "src",
+    "output": "lib",
+    "targets": [
+      "commonjs",
+      "module",
+      "typescript"
+    ]
+  },
+  "sideEffects": false
+}
