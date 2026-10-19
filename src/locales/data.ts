@@ -9,14 +9,21 @@ export interface LocaleData {
   streets: string[];
   countryName: string;
   countryDialCode: string;
-  postalCodeFormat: () => string; // called with a bound PRNG at generation time via closures
-  phoneFormat: string; // '#' = digit placeholder
+  postalCodeFormat: () => string;
+  phoneFormat: string;
   companies: string[];
   domainTlds: string[];
+  /** Right-to-left script locale (Arabic, etc.) */
+  rtl?: boolean;
+  /** Sample RTL-friendly sentence for description/comment fields */
+  sampleSentence?: string;
 }
 
-// Postal code generators are wired up at call sites (they need PRNG),
-// so here we just describe the shape; concrete formats live in generators/address.ts.
+const RTL_LOCALES: LocaleCode[] = ['ar-SA'];
+
+export function isRtlLocale(code: LocaleCode): boolean {
+  return RTL_LOCALES.includes(code) || Boolean(LOCALES[code]?.rtl);
+}
 
 export const LOCALES: Record<LocaleCode, LocaleData> = {
   'en-US': {
@@ -32,6 +39,7 @@ export const LOCALES: Record<LocaleCode, LocaleData> = {
     phoneFormat: '+1 ### ### ####',
     companies: ['Initech', 'Globex', 'Umbrella Corp', 'Stark Industries', 'Wayne Enterprises', 'Hooli', 'Soylent Corp', 'Wonka Industries'],
     domainTlds: ['com', 'io', 'dev', 'app'],
+    sampleSentence: 'Looking forward to trying this product with the team.',
   },
   'en-GB': {
     firstNamesMale: ['Oliver', 'George', 'Harry', 'Jack', 'Jacob', 'Noah', 'Charlie', 'Thomas', 'Oscar', 'William'],
@@ -46,6 +54,7 @@ export const LOCALES: Record<LocaleCode, LocaleData> = {
     phoneFormat: '+44 #### ######',
     companies: ['Initech Ltd', 'Globex UK', 'Ravenwood plc', 'Kingfisher Group', 'Brightside Ltd', 'Northwind Traders'],
     domainTlds: ['co.uk', 'com', 'io'],
+    sampleSentence: 'Keen to give this a proper go with the squad.',
   },
   'fr-FR': {
     firstNamesMale: ['Léo', 'Gabriel', 'Louis', 'Hugo', 'Arthur', 'Jules', 'Adam', 'Raphaël', 'Nathan', 'Lucas'],
@@ -60,6 +69,7 @@ export const LOCALES: Record<LocaleCode, LocaleData> = {
     phoneFormat: '+33 # ## ## ## ##',
     companies: ['Dupont SA', 'Lumière Group', 'Étoile Industries', 'Vertige SARL', 'Horizon Média'],
     domainTlds: ['fr', 'com'],
+    sampleSentence: 'J’ai hâte de tester ce produit avec l’équipe.',
   },
   'de-DE': {
     firstNamesMale: ['Ben', 'Paul', 'Leon', 'Finn', 'Jonas', 'Elias', 'Noah', 'Luis', 'Felix', 'Maximilian'],
@@ -74,51 +84,120 @@ export const LOCALES: Record<LocaleCode, LocaleData> = {
     phoneFormat: '+49 ### #######',
     companies: ['Müller GmbH', 'Nordlicht AG', 'Bergmann & Co', 'Sonnenschein Handels GmbH', 'Vogel Industrie'],
     domainTlds: ['de', 'com'],
+    sampleSentence: 'Ich freue mich darauf, dieses Produkt mit dem Team zu testen.',
   },
   'ar-SA': {
-    firstNamesMale: ['Mohammed', 'Ahmed', 'Abdullah', 'Khalid', 'Faisal', 'Omar', 'Yousef', 'Saad', 'Fahad', 'Nasser'],
-    firstNamesFemale: ['Fatima', 'Aisha', 'Noura', 'Sara', 'Maryam', 'Lina', 'Hind', 'Reem', 'Alia', 'Layla'],
-    lastNames: ['Al-Saud', 'Al-Ghamdi', 'Al-Qahtani', 'Al-Otaibi', 'Al-Harbi', 'Al-Zahrani', 'Al-Shehri', 'Al-Amri'],
-    cities: ['Riyadh', 'Jeddah', 'Mecca', 'Medina', 'Dammam', 'Khobar', 'Taif', 'Abha'],
-    states: ['Riyadh Province', 'Makkah Province', 'Eastern Province', 'Asir Province'],
-    streets: ['King Fahd Rd', 'Olaya St', 'Prince Sultan Rd', 'Tahlia St', 'Al Ahsa Rd'],
-    countryName: 'Saudi Arabia',
+    firstNamesMale: ['محمد', 'أحمد', 'عبدالله', 'خالد', 'فيصل', 'عمر', 'يوسف', 'سعد', 'فهد', 'ناصر'],
+    firstNamesFemale: ['فاطمة', 'عائشة', 'نورة', 'سارة', 'مريم', 'لينا', 'هند', 'ريم', 'علياء', 'ليلى'],
+    lastNames: ['آل سعود', 'الغامدي', 'القحطاني', 'العتيبي', 'الحربي', 'الزهراني', 'الشهري', 'العمري'],
+    cities: ['الرياض', 'جدة', 'مكة', 'المدينة', 'الدمام', 'الخبر', 'الطائف', 'أبها'],
+    states: ['منطقة الرياض', 'منطقة مكة', 'المنطقة الشرقية', 'منطقة عسير'],
+    streets: ['طريق الملك فهد', 'شارع العليا', 'طريق الأمير سلطان', 'شارع التحلية', 'طريق الأحساء'],
+    countryName: 'المملكة العربية السعودية',
     countryDialCode: '+966',
     postalCodeFormat: () => '#####',
     phoneFormat: '+966 5# ### ####',
-    companies: ['Al-Faisal Trading', 'Desert Rose Group', 'Najd Industries', 'Hejaz Holdings'],
+    companies: ['الفيصل للتجارة', 'مجموعة وردة الصحراء', 'صناعات نجد', 'حجاز القابضة'],
     domainTlds: ['sa', 'com'],
+    rtl: true,
+    sampleSentence: 'أتطلع إلى تجربة هذا المنتج مع الفريق.',
   },
   'hi-IN': {
-    firstNamesMale: ['Aarav', 'Vivaan', 'Aditya', 'Vihaan', 'Arjun', 'Reyansh', 'Krishna', 'Ishaan', 'Rohan', 'Kabir'],
-    firstNamesFemale: ['Saanvi', 'Aanya', 'Aadhya', 'Diya', 'Ananya', 'Ishita', 'Riya', 'Myra', 'Sara', 'Anika'],
-    lastNames: ['Sharma', 'Verma', 'Gupta', 'Patel', 'Reddy', 'Iyer', 'Kumar', 'Singh', 'Nair', 'Rao'],
-    cities: ['Mumbai', 'Delhi', 'Bengaluru', 'Hyderabad', 'Chennai', 'Kolkata', 'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow'],
-    states: ['Maharashtra', 'Delhi', 'Karnataka', 'Telangana', 'Tamil Nadu', 'West Bengal', 'Gujarat', 'Rajasthan'],
-    streets: ['MG Road', 'Nehru St', 'Gandhi Nagar', 'Ring Rd', 'Church St', 'Station Rd'],
-    countryName: 'India',
+    firstNamesMale: ['आरव', 'विवान', 'आदित्य', 'विहान', 'अर्जुन', 'रेयांश', 'कृष्ण', 'ईशान', 'रोहन', 'कबीर'],
+    firstNamesFemale: ['सानवी', 'आन्या', 'आध्या', 'दिया', 'अनन्या', 'इशिता', 'रिया', 'मायरा', 'सारा', 'अनिका'],
+    lastNames: ['शर्मा', 'वर्मा', 'गुप्ता', 'पटेल', 'रेड्डी', 'अय्यर', 'कुमार', 'सिंह', 'नायर', 'राव'],
+    cities: ['मुंबई', 'दिल्ली', 'बेंगलुरु', 'हैदराबाद', 'चेन्नई', 'कोलकाता', 'पुणे', 'अहमदाबाद', 'जयपुर', 'लखनऊ'],
+    states: ['महाराष्ट्र', 'दिल्ली', 'कर्नाटक', 'तेलंगाना', 'तमिलनाडु', 'पश्चिम बंगाल', 'गुजरात', 'राजस्थान'],
+    streets: ['एमजी रोड', 'नेहरू स्ट्रीट', 'गांधी नगर', 'रिंग रोड', 'चर्च स्ट्रीट', 'स्टेशन रोड'],
+    countryName: 'भारत',
     countryDialCode: '+91',
     postalCodeFormat: () => '######',
     phoneFormat: '+91 ##### #####',
-    companies: ['Sharma Industries', 'Ganges Tech', 'Himalaya Traders', 'Lotus Enterprises', 'Sundar Group'],
+    companies: ['शर्मा इंडस्ट्रीज', 'गंगा टेक', 'हिमालय ट्रेडर्स', 'लोटस एंटरप्राइजेज', 'सुंदर ग्रुप'],
     domainTlds: ['in', 'com'],
+    sampleSentence: 'मैं टीम के साथ इस उत्पाद को आज़माने के लिए उत्सुक हूँ।',
   },
   'ja-JP': {
-    firstNamesMale: ['Haruto', 'Yuto', 'Sota', 'Ren', 'Riku', 'Sora', 'Yamato', 'Itsuki', 'Hayato', 'Kaito'],
-    firstNamesFemale: ['Yui', 'Hina', 'Yua', 'Mio', 'Aoi', 'Rin', 'Sakura', 'Koharu', 'Akari', 'Ichika'],
-    lastNames: ['Sato', 'Suzuki', 'Takahashi', 'Tanaka', 'Watanabe', 'Ito', 'Yamamoto', 'Nakamura', 'Kobayashi', 'Kato'],
-    cities: ['Tokyo', 'Osaka', 'Yokohama', 'Nagoya', 'Sapporo', 'Fukuoka', 'Kobe', 'Kyoto', 'Kawasaki', 'Saitama'],
-    states: ['Tokyo', 'Osaka', 'Kanagawa', 'Aichi', 'Hokkaido', 'Fukuoka'],
-    streets: ['Sakura Dori', 'Chuo Dori', 'Ginza St', 'Honmachi', 'Midori St'],
-    countryName: 'Japan',
+    firstNamesMale: ['陽翔', '悠斗', '蒼', '蓮', '陸', '颯真', '大和', '樹', '隼人', '海斗'],
+    firstNamesFemale: ['結衣', '陽菜', '結愛', '美緒', '葵', '凛', '桜', '心春', 'あかり', '一花'],
+    lastNames: ['佐藤', '鈴木', '高橋', '田中', '渡辺', '伊藤', '山本', '中村', '小林', '加藤'],
+    cities: ['東京', '大阪', '横浜', '名古屋', '札幌', '福岡', '神戸', '京都', '川崎', 'さいたま'],
+    states: ['東京都', '大阪府', '神奈川県', '愛知県', '北海道', '福岡県'],
+    streets: ['桜通り', '中央通り', '銀座通り', '本町', '緑通り'],
+    countryName: '日本',
     countryDialCode: '+81',
     postalCodeFormat: () => '###-####',
     phoneFormat: '+81 ##-####-####',
-    companies: ['Sato Corp', 'Fuji Industries', 'Sakura Tech', 'Kaizen Holdings', 'Tsubaki Group'],
+    companies: ['佐藤商事', '富士産業', '桜テック', '改善ホールディングス', '椿グループ'],
     domainTlds: ['jp', 'co.jp', 'com'],
+    sampleSentence: 'チームと一緒にこの製品を試すのが楽しみです。',
+  },
+  'es-ES': {
+    firstNamesMale: ['Hugo', 'Martín', 'Lucas', 'Mateo', 'Leo', 'Daniel', 'Alejandro', 'Pablo', 'Manuel', 'Álvaro'],
+    firstNamesFemale: ['Lucía', 'Sofía', 'Martina', 'María', 'Julia', 'Paula', 'Valeria', 'Emma', 'Carla', 'Alba'],
+    lastNames: ['García', 'Rodríguez', 'González', 'Fernández', 'López', 'Martínez', 'Sánchez', 'Pérez', 'Gómez', 'Martin'],
+    cities: ['Madrid', 'Barcelona', 'Valencia', 'Sevilla', 'Zaragoza', 'Málaga', 'Murcia', 'Palma', 'Bilbao', 'Alicante'],
+    states: ['Madrid', 'Cataluña', 'Andalucía', 'Valencia', 'Galicia', 'País Vasco'],
+    streets: ['Calle Mayor', 'Avenida de la Constitución', 'Calle Real', 'Paseo del Prado', 'Calle Gran Vía'],
+    countryName: 'España',
+    countryDialCode: '+34',
+    postalCodeFormat: () => '#####',
+    phoneFormat: '+34 ### ### ###',
+    companies: ['Ibérica SA', 'Sol y Mar SL', 'Nortech España', 'García Hermanos', 'Costa Verde'],
+    domainTlds: ['es', 'com'],
+    sampleSentence: 'Tengo ganas de probar este producto con el equipo.',
+  },
+  'pt-BR': {
+    firstNamesMale: ['Miguel', 'Arthur', 'Gael', 'Heitor', 'Theo', 'Davi', 'Gabriel', 'Bernardo', 'Samuel', 'João'],
+    firstNamesFemale: ['Alice', 'Helena', 'Laura', 'Maria', 'Valentina', 'Sophia', 'Isabella', 'Manuela', 'Júlia', 'Lorena'],
+    lastNames: ['Silva', 'Santos', 'Oliveira', 'Souza', 'Rodrigues', 'Ferreira', 'Alves', 'Pereira', 'Lima', 'Gomes'],
+    cities: ['São Paulo', 'Rio de Janeiro', 'Brasília', 'Salvador', 'Fortaleza', 'Belo Horizonte', 'Manaus', 'Curitiba', 'Recife', 'Porto Alegre'],
+    states: ['São Paulo', 'Rio de Janeiro', 'Minas Gerais', 'Bahia', 'Paraná', 'Rio Grande do Sul'],
+    streets: ['Rua das Flores', 'Avenida Paulista', 'Rua Augusta', 'Avenida Brasil', 'Rua XV de Novembro'],
+    countryName: 'Brasil',
+    countryDialCode: '+55',
+    postalCodeFormat: () => '#####-###',
+    phoneFormat: '+55 ## #####-####',
+    companies: ['Silva Tech', 'Amazônia Soft', 'Verde Mar Ltda', 'Sul Digital', 'Nova Horizonte'],
+    domainTlds: ['com.br', 'br', 'com'],
+    sampleSentence: 'Estou ansioso para testar este produto com a equipe.',
+  },
+  'zh-CN': {
+    firstNamesMale: ['伟', '强', '磊', '洋', '勇', '军', '杰', '涛', '明', '超'],
+    firstNamesFemale: ['芳', '娜', '敏', '静', '丽', '艳', '娟', '霞', '秀英', '桂英'],
+    lastNames: ['王', '李', '张', '刘', '陈', '杨', '黄', '赵', '吴', '周'],
+    cities: ['北京', '上海', '广州', '深圳', '杭州', '成都', '武汉', '西安', '南京', '苏州'],
+    states: ['北京市', '上海市', '广东省', '浙江省', '四川省', '湖北省'],
+    streets: ['中山路', '解放路', '人民路', '建设路', '和平路'],
+    countryName: '中国',
+    countryDialCode: '+86',
+    postalCodeFormat: () => '######',
+    phoneFormat: '+86 ### #### ####',
+    companies: ['华信科技', '东方实业', '银河集团', '鹏程贸易', '云帆网络'],
+    domainTlds: ['cn', 'com.cn', 'com'],
+    sampleSentence: '很期待和团队一起试用这款产品。',
+  },
+  'tr-TR': {
+    firstNamesMale: ['Yusuf', 'Eymen', 'Ömer', 'Mustafa', 'Emir', 'Ahmet', 'Ali', 'Hüseyin', 'İbrahim', 'Hasan'],
+    firstNamesFemale: ['Zeynep', 'Elif', 'Defne', 'Asya', 'Azra', 'Ecrin', 'Nehir', 'Miray', 'Eylül', 'Ada'],
+    lastNames: ['Yılmaz', 'Kaya', 'Demir', 'Şahin', 'Çelik', 'Yıldız', 'Yıldırım', 'Öztürk', 'Aydın', 'Özdemir'],
+    cities: ['İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Adana', 'Konya', 'Gaziantep', 'Şanlıurfa', 'Kocaeli'],
+    states: ['İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Adana'],
+    streets: ['Atatürk Cad.', 'İstiklal Cad.', 'Cumhuriyet Cad.', 'Gazi Cad.', 'Bağdat Cad.'],
+    countryName: 'Türkiye',
+    countryDialCode: '+90',
+    postalCodeFormat: () => '#####',
+    phoneFormat: '+90 ### ### ## ##',
+    companies: ['Anadolu AŞ', 'Boğaz Tech', 'Ege Ticaret', 'Karadeniz Holding', 'Akdeniz Yazılım'],
+    domainTlds: ['com.tr', 'tr', 'com'],
+    sampleSentence: 'Bu ürünü ekiple denemek için sabırsızlanıyorum.',
   },
 };
 
 export function getLocale(code: LocaleCode): LocaleData {
   return LOCALES[code] ?? LOCALES['en-US'];
+}
+
+export function listLocaleCodes(): LocaleCode[] {
+  return Object.keys(LOCALES) as LocaleCode[];
 }

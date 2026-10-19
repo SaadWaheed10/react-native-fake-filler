@@ -16,6 +16,10 @@ export interface FFTextInputProps extends TextInputProps {
   /** Optional field name, used purely for detection (RN's TextInput has no native `name` prop). */
   name?: string;
   label?: string;
+  /** Minimum length constraint used by validation-aware filling */
+  minLength?: number;
+  /** Regex (or source string) the generated value should satisfy */
+  pattern?: RegExp | string;
 }
 
 /**
@@ -29,7 +33,7 @@ export interface FFTextInputProps extends TextInputProps {
  * `FFTextInput` manages its own state internally.
  */
 export const FFTextInput = React.forwardRef<TextInput, FFTextInputProps>(function FFTextInput(
-  { fakeFillerType, fakeFillerKey, name, label, value, onChangeText, ...rest },
+  { fakeFillerType, fakeFillerKey, name, label, minLength, pattern, value, onChangeText, ...rest },
   ref
 ) {
   const [internalValue, setInternalValue] = useState(value ?? '');
@@ -41,9 +45,10 @@ export const FFTextInput = React.forwardRef<TextInput, FFTextInputProps>(functio
   );
 
   const setValue = useCallback(
-    (v: string) => {
-      if (!isControlled) setInternalValue(v);
-      onChangeText?.(v);
+    (v: string | boolean | number | Date) => {
+      const str = typeof v === 'string' ? v : v instanceof Date ? v.toISOString().slice(0, 10) : String(v);
+      if (!isControlled) setInternalValue(str);
+      onChangeText?.(str);
     },
     [isControlled, onChangeText]
   );
@@ -58,6 +63,9 @@ export const FFTextInput = React.forwardRef<TextInput, FFTextInputProps>(functio
     secureTextEntry: rest.secureTextEntry,
     keyboardType: rest.keyboardType as string | undefined,
     maxLength: rest.maxLength,
+    minLength,
+    pattern,
+    controlKind: 'text',
   };
 
   useRegisterField(keyRef.current, setValue, signature, fakeFillerType);

@@ -1,50 +1,87 @@
 import { useCallback } from 'react';
-import { fakeFillerEngine } from '../core/FakeFiller';
 import { useFakeFillerContext } from './context';
-import type { FillOptions } from '../core/types';
+import { fakeFillerEngine } from '../core/FakeFiller';
+import type { FillOptions, FillResult, FillSnapshot, FillValue } from '../core/types';
 
 export interface UseFakeFillerResult {
   /** Fills every `FFTextInput` (or manually registered field) mounted under the nearest provider. */
-  fill: (options?: FillOptions) => { filled: number; skipped: number };
-  /** Alias for `fill()` — regenerates fresh values for every field, same as pressing the dev toolbar button again. */
-  regenerate: (options?: FillOptions) => { filled: number; skipped: number };
-  /** Clears every registered field back to an empty string. */
+  fill: (options?: FillOptions) => FillResult;
+  /** Alias for `fill`. */
+  regenerate: (options?: FillOptions) => FillResult;
+  /** Clears every registered field back to an empty / default value. */
   clear: () => void;
   /** Number of fields currently registered under the nearest provider. */
   fieldCount: () => number;
+  /** Replays the latest (or specified) fill snapshot. */
+  replay: (snapshotId?: string) => FillResult;
+  /** Fill using a named persona. */
+  fillPersona: (persona: string, options?: FillOptions) => FillResult;
+  /** Fill using a named scenario. */
+  fillScenario: (scenario: string, options?: FillOptions) => FillResult;
+  /** History of recent fills for this session. */
+  history: () => FillSnapshot[];
+  /** Last generated values (from history). */
+  lastValues: () => Record<string, FillValue>;
+  /** JSON export of the latest fill. */
+  exportJson: () => string;
 }
 
 /**
- * The primary hook for triggering FakeFiller from inside a component, e.g.
- * a custom "Fill Form" button.
- *
- * ```tsx
- * const { fill, clear } = useFakeFiller();
- * <Button title="Fill" onPress={() => fill()} />
- * ```
- *
- * Must be called from a component rendered under `<FakeFillerProvider>`.
- * Outside a provider, `fill`/`regenerate`/`clear` are safe no-ops so the
- * hook can still be used in code paths that run in production.
+ * Hook exposing fill / clear / replay helpers scoped to the nearest
+ * `FakeFillerProvider`. Falls back to the global engine when no provider
+ * is present (useful in tests).
  */
 export function useFakeFiller(): UseFakeFillerResult {
   const ctx = useFakeFillerContext();
 
   const fill = useCallback(
     (options?: FillOptions) => {
-      if (!ctx) return { filled: 0, skipped: 0 };
-      return ctx.fillScreen(options);
+      if (ctx) return ctx.fillScreen(options);
+      return fakeFillerEngine.fillScreen(options);
     },
     [ctx]
   );
 
   const clear = useCallback(() => {
-    ctx?.clearFields();
+    if (ctx) ctx.clearFields();
+    else fakeFillerEngine.clearFields();
   }, [ctx]);
 
-  const fieldCount = useCallback(() => ctx?.fieldCount() ?? 0, [ctx]);
+  const fieldCount = useCallback(() => {
+    if (ctx) return ctx.fieldCount();
+    return fakeFillerEngine.getRegisteredFieldCount();
+  }, [ctx]);
 
-  return { fill, regenerate: fill, clear, fieldCount };
+  const replay = useCallback(
+    (snapshotId?: string) => {
+      if (ctx) return ctx.replay(snapshotId);
+      return fakeFillerEngine.replay(snapshotId);
+    },
+    [ctx]
+  );
+
+  const fillPersona = useCallback(
+    (persona: string, options?: FillOptions) => fill({ ...options, persona }),
+    [fill]
+  );
+
+  const fillScenario = useCallback(
+    (scenario: string, options?: FillOptions) => fill({ ...options, scenario }),
+    [fill]
+  );
+
+  return {
+    fill,
+    regenerate: fill,
+    clear,
+    fieldCount,
+    replay,
+    fillPersona,
+    fillScenario,
+    history: () => fakeFillerEngine.getHistory(),
+    lastValues: () => fakeFillerEngine.exportRegisteredValues(),
+    exportJson: () => fakeFillerEngine.exportLastFill(),
+  };
 }
 
 /** Re-exported for convenience when a component needs the raw engine (rare). */

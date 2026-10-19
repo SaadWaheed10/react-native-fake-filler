@@ -20,12 +20,21 @@ import { FakeFiller } from 'react-native-fake-filler';
 - [Quick start](#quick-start)
 - [How field detection works](#how-field-detection-works)
 - [Supported field types](#supported-field-types)
+- [Non-text controls](#non-text-controls)
+- [Personas](#personas)
+- [Scenarios](#scenarios)
+- [Related-field intelligence](#related-field-intelligence)
+- [Validation-aware filling](#validation-aware-filling)
+- [Fill history, replay & export](#fill-history-replay--export)
+- [Shake-to-fill](#shake-to-fill)
+- [UI-kit wrappers](#ui-kit-wrappers)
 - [Generation modes](#generation-modes)
 - [API reference](#api-reference)
 - [Custom generators & rules](#custom-generators--rules)
 - [Localization](#localization)
 - [Developer toolbar](#developer-toolbar)
 - [Testing guide (Jest / RNTL / Detox / Maestro / Appium)](#testing-guide)
+- [E2E helpers](#e2e-helpers)
 - [Expo example](#expo-example)
 - [React Native CLI example](#react-native-cli-example)
 - [Best practices](#best-practices)
@@ -146,8 +155,130 @@ FakeFiller.detectType({ placeholder: 'Confirm Password' }); // 'confirmPassword'
 | Text | loremWord, sentence, paragraph, review, description, comment |
 | Numbers | integer, float, percentage, currency |
 | Dates | pastDate, futureDate, currentDate, randomDate |
+| Controls | boolean, switch, checkbox, picker, radio, date |
 
 Anything not on this list can be covered with a [custom generator](#custom-generators--rules) in one line.
+
+---
+
+## Non-text controls
+
+Drop-in controls that register themselves like `FFTextInput`:
+
+```tsx
+import { FFSwitch, FFCheckbox, FFPicker, FFRadio, FFDate } from 'react-native-fake-filler';
+
+<FFSwitch label="Marketing emails" />
+<FFCheckbox label="I agree to the terms" />
+<FFPicker label="Plan" options={['Free', 'Pro', 'Enterprise']} />
+<FFRadio label="Account type" options={['Personal', 'Business']} />
+<FFDate label="Date of birth" fakeFillerType="dateOfBirth" />
+```
+
+For your own Switch/Picker, use `useRegisterControl` with `controlKind: 'switch' | 'checkbox' | 'picker' | 'radio' | 'date'`.
+
+---
+
+## Personas
+
+Coherent profiles so name, email, phone, and address belong to the same person:
+
+```tsx
+FakeFiller.fillPersona('qa-adult-us');
+// Built-in: qa-adult-us | qa-adult-uk | qa-adult-in | qa-adult-sa | edge-long-name | minimal
+
+FakeFiller.registerPersona({
+  id: 'my-qa-user',
+  label: 'Custom QA user',
+  locale: 'en-US',
+  values: { email: 'qa@example.com', firstName: 'Alex', lastName: 'Rivera' },
+});
+```
+
+---
+
+## Scenarios
+
+Named fill sets for happy-path and negative tests:
+
+```tsx
+FakeFiller.fillScenario('signup');
+FakeFiller.fillScenario('checkout');
+FakeFiller.fillScenario('kyc');
+FakeFiller.fillScenario('invalid-email');   // broken email on purpose
+FakeFiller.fillScenario('edge-case-long-name');
+```
+
+Or via options: `FakeFiller.fillScreen({ scenario: 'login' })`.
+
+---
+
+## Related-field intelligence
+
+On every fill pass (unless `disableRelated: true`), FakeFiller keeps values coherent:
+
+- `password` ↔ `confirmPassword`
+- `firstName` + `lastName` → `fullName`, `email`, `username`
+- `city` / `state` / `zipCode` / `street` / `country` from one address
+- `creditCardNumber` + `cardExpiry` + `cvv` as one card set
+
+---
+
+## Validation-aware filling
+
+Respects `maxLength`, `minLength`, and `pattern` on `FFTextInput` / field signatures so generated values are less likely to fail client validation:
+
+```tsx
+<FFTextInput placeholder="Email" maxLength={64} pattern={/^[^@]+@[^@]+\.[^@]+$/} />
+```
+
+Pass `disableValidation: true` in fill options for negative tests.
+
+---
+
+## Fill history, replay & export
+
+Every fill is snapshotted (last 20 by default):
+
+```tsx
+FakeFiller.fillScreen();
+FakeFiller.replay();                    // re-apply last fill
+FakeFiller.history();                   // FillSnapshot[]
+FakeFiller.exportJson();                // pretty JSON
+FakeFiller.exportEnv();                 // flat string map for Maestro
+```
+
+The dev toolbar exposes **Replay last** and **Export JSON**.
+
+---
+
+## Shake-to-fill
+
+```tsx
+import { useShakeToFill } from 'react-native-fake-filler';
+
+useShakeToFill({ scenario: 'signup' });
+```
+
+Requires optional peer `expo-sensors`. Without it, the hook no-ops and the toolbar still works. Long-press the ⚡ FAB to fill.
+
+```sh
+npx expo install expo-sensors
+```
+
+---
+
+## UI-kit wrappers
+
+Wrap Paper / NativeBase / Tamagui / GlueStack / NativeWind inputs without rewriting call sites:
+
+```tsx
+import { TextInput } from 'react-native-paper';
+import { withFakeFiller, createPaperTextInputWrapper } from 'react-native-fake-filler';
+
+const FFPaperInput = createPaperTextInputWrapper(TextInput);
+// or: const FFPaperInput = withFakeFiller(TextInput);
+```
 
 ---
 
@@ -227,12 +358,20 @@ FakeFiller.seed(value)
 FakeFiller.fixed(values)
 FakeFiller.unique()
 FakeFiller.setLocale(locale)
+FakeFiller.getLocale() / listLocales() / isRtl()
 FakeFiller.register(name, generatorFn)
 FakeFiller.configure(rules)
 FakeFiller.reset()
 FakeFiller.clearScreen()
 FakeFiller.detectType(signature)
-FakeFiller.generate(type, options?)     // generate a single value on demand
+FakeFiller.generate(type, options?)
+FakeFiller.fillPersona(id, options?)
+FakeFiller.fillScenario(id, options?)
+FakeFiller.registerPersona / listPersonas
+FakeFiller.registerScenario / listScenarios
+FakeFiller.history() / replay(id?) / clearHistory()
+FakeFiller.exportJson(id?) / exportEnv(id?) / lastValues()
+FakeFiller.forE2E(options?)
 ```
 
 `FillOptions`:
@@ -243,6 +382,10 @@ interface FillOptions {
   mode?: 'unique' | 'random' | 'seeded' | 'fixed';
   seed?: number;
   overrides?: Record<string, string | Generator>;
+  persona?: PersonaId | string;
+  scenario?: ScenarioId | string;
+  disableRelated?: boolean;
+  disableValidation?: boolean;
 }
 ```
 
@@ -295,19 +438,26 @@ FakeFiller.fillScreen({
 ```ts
 FakeFiller.setLocale('fr-FR');
 FakeFiller.fillScreen();
+FakeFiller.isRtl(); // true for ar-SA, etc.
+FakeFiller.listLocales();
 ```
 
-Built-in locales: `en-US`, `en-GB`, `fr-FR`, `de-DE`, `ar-SA`, `hi-IN`, `ja-JP`. Names, cities, states, street names, phone formats, and postal code formats are all locale-aware. Add more by supplying `overrides`/`register` for the fields you need in a locale that isn't built in yet.
+Built-in locales: `en-US`, `en-GB`, `fr-FR`, `de-DE`, `ar-SA`, `hi-IN`, `ja-JP`, `es-ES`, `pt-BR`, `zh-CN`, `tr-TR`.
+
+Names, cities, states, streets, phones, postal codes, and sample sentences are locale-aware. Arabic (`ar-SA`) and Hindi/Japanese/Chinese use native-script sample data for RTL / CJK polish.
 
 ---
 
 ## Developer toolbar
 
 ```tsx
-<FakeFillerDevToolbar position="bottom-right" />
+<FakeFillerDevToolbar
+  position="bottom-right"
+  onExport={(values, json) => console.log(json)}
+/>
 ```
 
-A floating "⚡" button (dev-only by default) that expands into **Fill Form**, **Regenerate**, **Clear Form**, and **Export**. Pass `onExport` to wire the exported values into your own logging/clipboard flow.
+Floating "⚡" button (dev-only by default): **Fill Form**, **Regenerate**, **Clear Form**, **Replay last**, **Export JSON**, **Scenarios…**, **Personas…**. Long-press the FAB to fill immediately.
 
 ---
 
@@ -346,6 +496,22 @@ Generate values ahead of time in a setup script and inject them as Maestro env v
 ### Appium
 
 Same idea as Detox — call `FakeFiller.generate(type)` in your test setup and feed the string into `sendKeys`.
+
+---
+
+## E2E helpers
+
+Generate a full value bag without mounting React (ideal for Detox / Maestro / Appium setup scripts):
+
+```ts
+const data = FakeFiller.forE2E({ seed: 42, scenario: 'signup' });
+
+await element(by.id('email')).typeText(data.values.email);
+await element(by.id('password')).typeText(data.values.password);
+
+// Maestro env snippet
+console.log(data.toMaestroEnv());
+```
 
 ---
 

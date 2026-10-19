@@ -112,6 +112,12 @@ const RULES: Array<[FieldKey, string[]]> = [
   ['pastDate', ['start date', 'issue date']],
   ['currentDate', ['today', 'current date']],
   ['randomDate', ['date']],
+
+  // Non-text controls (fallback keywords)
+  ['switch', ['switch', 'toggle']],
+  ['checkbox', ['checkbox', 'agree to', 'terms and', 'accept terms', 'i agree']],
+  ['picker', ['picker', 'dropdown', 'select option']],
+  ['radio', ['radio']],
 ];
 
 function normalize(value: string | undefined): string {

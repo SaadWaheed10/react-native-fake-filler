@@ -1,25 +1,32 @@
 import { fakeFillerEngine } from './core/FakeFiller';
 import { detectFieldType } from './core/fieldDetector';
+import { forE2E } from './e2e/helpers';
+import { isRtlLocale, listLocaleCodes } from './locales/data';
+import type { PersonaProfile } from './core/personas';
+import type { ScenarioDefinition } from './core/scenarios';
 import type {
   FieldSignature,
   FillOptions,
+  FillValue,
   Generator,
   LocaleCode,
+  PersonaId,
   RegisteredField,
+  ScenarioId,
 } from './core/types';
 
 export interface RefLikeTarget {
   /** Anything with a `setNativeProps`/`setValue`-like API, or a plain setter function. */
-  setValue?: (value: string) => void;
+  setValue?: (value: FillValue) => void;
   current?: { setNativeProps?: (props: { text?: string }) => void } | null;
 }
 
-function resolveSetter(target: RefLikeTarget | ((v: string) => void)): (v: string) => void {
+function resolveSetter(target: RefLikeTarget | ((v: FillValue) => void)): (v: FillValue) => void {
   if (typeof target === 'function') return target;
   if (target.setValue) return target.setValue;
   if (target.current?.setNativeProps) {
     const current = target.current;
-    return (v: string) => current.setNativeProps?.({ text: v });
+    return (v: FillValue) => current.setNativeProps?.({ text: String(v) });
   }
   return () => {
     // eslint-disable-next-line no-console
@@ -47,15 +54,34 @@ export const FakeFiller = {
    * `{ setValue }` object, or a ref-like object exposing `setNativeProps`.
    */
   fill(
-    targets: Record<string, RefLikeTarget | ((v: string) => void) | { setValue: (v: string) => void; signature?: FieldSignature }>,
+    targets: Record<
+      string,
+      | RefLikeTarget
+      | ((v: FillValue) => void)
+      | { setValue: (v: FillValue) => void; signature?: FieldSignature }
+    >,
     options?: FillOptions
   ) {
-    const normalized: Record<string, { setValue: (v: string) => void; signature?: FieldSignature }> = {};
+    const normalized: Record<
+      string,
+      { setValue: (v: FillValue) => void; signature?: FieldSignature }
+    > = {};
     for (const [key, target] of Object.entries(targets)) {
-      if (typeof target === 'object' && 'setValue' in target && typeof target.setValue === 'function' && 'signature' in target) {
-        normalized[key] = target as { setValue: (v: string) => void; signature?: FieldSignature };
+      if (
+        typeof target === 'object' &&
+        target !== null &&
+        'setValue' in target &&
+        typeof target.setValue === 'function' &&
+        'signature' in target
+      ) {
+        normalized[key] = target as {
+          setValue: (v: FillValue) => void;
+          signature?: FieldSignature;
+        };
       } else {
-        normalized[key] = { setValue: resolveSetter(target as RefLikeTarget | ((v: string) => void)) };
+        normalized[key] = {
+          setValue: resolveSetter(target as RefLikeTarget | ((v: FillValue) => void)),
+        };
       }
     }
     return fakeFillerEngine.fill(normalized, options);
@@ -84,6 +110,18 @@ export const FakeFiller = {
 
   setLocale(locale: LocaleCode) {
     fakeFillerEngine.setLocale(locale);
+  },
+
+  getLocale() {
+    return fakeFillerEngine.getLocale();
+  },
+
+  listLocales() {
+    return listLocaleCodes();
+  },
+
+  isRtl(locale?: LocaleCode) {
+    return isRtlLocale(locale ?? fakeFillerEngine.getLocale());
   },
 
   /** Registers a custom generator under a name you can reference from `fill()`, `fillScreen()` overrides, or `fakeFillerType`. */
@@ -120,4 +158,67 @@ export const FakeFiller = {
   generate(type: string, options?: FillOptions) {
     return fakeFillerEngine.generateValueFor(type, undefined, options);
   },
+
+  // ---- Personas -----------------------------------------------------------
+
+  fillPersona(persona: PersonaId | string, options?: FillOptions) {
+    return fakeFillerEngine.fillPersona(persona, options);
+  },
+
+  registerPersona(persona: PersonaProfile) {
+    fakeFillerEngine.registerPersona(persona);
+  },
+
+  listPersonas() {
+    return fakeFillerEngine.listPersonas();
+  },
+
+  // ---- Scenarios ----------------------------------------------------------
+
+  fillScenario(scenario: ScenarioId | string, options?: FillOptions) {
+    return fakeFillerEngine.fillScenario(scenario, options);
+  },
+
+  registerScenario(scenario: ScenarioDefinition) {
+    fakeFillerEngine.registerScenario(scenario);
+  },
+
+  listScenarios() {
+    return fakeFillerEngine.listScenarios();
+  },
+
+  // ---- History / replay / export ------------------------------------------
+
+  history() {
+    return fakeFillerEngine.getHistory();
+  },
+
+  clearHistory() {
+    fakeFillerEngine.clearHistory();
+  },
+
+  replay(snapshotId?: string) {
+    return fakeFillerEngine.replay(snapshotId);
+  },
+
+  exportJson(snapshotId?: string) {
+    return fakeFillerEngine.exportLastFill(snapshotId);
+  },
+
+  exportEnv(snapshotId?: string) {
+    return fakeFillerEngine.exportLastFillEnv(snapshotId);
+  },
+
+  /** Last fill values (from history). */
+  lastValues() {
+    return fakeFillerEngine.exportRegisteredValues();
+  },
+
+  // ---- E2E ----------------------------------------------------------------
+
+  /**
+   * Builds a value bag for Detox / Maestro / Appium / Jest without a React tree.
+   * @see forE2E
+   */
+  forE2E: forE2E,
 };

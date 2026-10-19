@@ -113,11 +113,11 @@ export function buildGeneratorRegistry(
 
     // Text
     loremWord: () => misc.loremWord(),
-    sentence: () => misc.sentence(),
-    paragraph: () => misc.paragraph(),
-    review: () => misc.review(),
-    description: () => misc.description(),
-    comment: () => misc.comment(),
+    sentence: (ctx) => misc.sentence(ctx),
+    paragraph: (ctx) => misc.paragraph(ctx),
+    review: (ctx) => misc.review(ctx),
+    description: (ctx) => misc.description(ctx),
+    comment: (ctx) => misc.comment(ctx),
 
     // Numbers
     integer: () => misc.integer(),
@@ -131,8 +131,20 @@ export function buildGeneratorRegistry(
     currentDate: () => misc.currentDate(),
     randomDate: () => misc.randomDate(),
 
+    // Non-text (stringified fallbacks — engine prefers ControlKind path)
+    boolean: () => (prng.bool(0.7) ? 'true' : 'false'),
+    checkbox: () => (prng.bool(0.7) ? 'true' : 'false'),
+    switch: () => (prng.bool(0.7) ? 'true' : 'false'),
+    picker: () => prng.pick(['Option A', 'Option B', 'Option C']),
+    radio: () => prng.pick(['Option A', 'Option B', 'Option C']),
+    date: () => {
+      const d = new Date();
+      d.setFullYear(d.getFullYear() - prng.int(18, 60));
+      return d.toISOString().slice(0, 10);
+    },
+
     // Fallback
-    genericText: () => misc.sentence(),
+    genericText: (ctx) => misc.sentence(ctx),
   };
 
   return registry;

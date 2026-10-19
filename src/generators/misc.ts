@@ -1,5 +1,6 @@
 import { PRNG } from '../core/prng';
 import { UniquenessTracker } from '../core/uniqueness';
+import { getLocale } from '../locales/data';
 import type { GeneratorContext } from '../core/types';
 
 const LOREM_WORDS = [
@@ -60,29 +61,34 @@ export function makeMiscGenerators(prng: PRNG, uniq: UniquenessTracker) {
     return prng.pick(LOREM_WORDS);
   }
 
-  function sentence(): string {
+  function sentence(ctx?: GeneratorContext): string {
+    if (ctx) {
+      const sample = getLocale(ctx.locale).sampleSentence;
+      if (sample && prng.bool(0.6)) return sample;
+    }
     const len = prng.int(6, 12);
     const words = Array.from({ length: len }, () => prng.pick(LOREM_WORDS));
     const s = words.join(' ');
     return s.charAt(0).toUpperCase() + s.slice(1) + '.';
   }
 
-  function paragraph(): string {
+  function paragraph(ctx?: GeneratorContext): string {
     const count = prng.int(3, 5);
-    return Array.from({ length: count }, () => sentence()).join(' ');
+    return Array.from({ length: count }, () => sentence(ctx)).join(' ');
   }
 
-  function review(): string {
+  function review(ctx?: GeneratorContext): string {
     const openers = ['Great experience overall.', 'Really happy with this.', 'Works as expected.', 'Could be better, but solid.'];
-    return `${prng.pick(openers)} ${sentence()}`;
+    const localeOpener = ctx ? getLocale(ctx.locale).sampleSentence : undefined;
+    return `${localeOpener && prng.bool(0.5) ? localeOpener : prng.pick(openers)} ${sentence(ctx)}`;
   }
 
-  function description(): string {
-    return paragraph();
+  function description(ctx?: GeneratorContext): string {
+    return paragraph(ctx);
   }
 
-  function comment(): string {
-    return sentence();
+  function comment(ctx?: GeneratorContext): string {
+    return sentence(ctx);
   }
 
   function integer(): string {

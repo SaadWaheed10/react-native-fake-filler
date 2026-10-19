@@ -1,13 +1,21 @@
 import React, { createContext, useContext, useMemo, useRef, useCallback } from 'react';
 import { fakeFillerEngine } from '../core/FakeFiller';
-import type { FieldSignature, FillOptions, RegisteredField } from '../core/types';
+import type {
+  FieldSignature,
+  FillOptions,
+  FillResult,
+  FillValue,
+  RegisteredField,
+} from '../core/types';
 
 interface FakeFillerContextValue {
   registerField: (field: RegisteredField) => void;
   unregisterField: (key: string) => void;
-  fillScreen: (options?: FillOptions) => { filled: number; skipped: number };
+  fillScreen: (options?: FillOptions) => FillResult;
   clearFields: () => void;
   fieldCount: () => number;
+  replay: (snapshotId?: string) => FillResult;
+  getRegisteredFields: () => RegisteredField[];
 }
 
 const FakeFillerContext = createContext<FakeFillerContextValue | null>(null);
@@ -32,6 +40,13 @@ export function FakeFillerProvider({ children, enabled }: FakeFillerProviderProp
   const isEnabled = enabled ?? (typeof __DEV__ !== 'undefined' ? __DEV__ : true);
   const fieldsRef = useRef(new Map<string, RegisteredField>());
 
+  const syncEngine = useCallback(() => {
+    fakeFillerEngine.clearFieldRegistry();
+    for (const field of fieldsRef.current.values()) {
+      fakeFillerEngine.registerField(field);
+    }
+  }, []);
+
   const registerField = useCallback(
     (field: RegisteredField) => {
       if (!isEnabled) return;
@@ -46,32 +61,53 @@ export function FakeFillerProvider({ children, enabled }: FakeFillerProviderProp
 
   const fillScreen = useCallback(
     (options?: FillOptions) => {
-      if (!isEnabled) return { filled: 0, skipped: 0 };
-      let filled = 0;
-      let skipped = 0;
-      for (const field of fieldsRef.current.values()) {
-        fakeFillerEngine.registerField(field);
-      }
+      if (!isEnabled) return { filled: 0, skipped: 0, values: {} };
+      syncEngine();
       const result = fakeFillerEngine.fillScreen(options);
-      filled = result.filled;
-      skipped = result.skipped;
       fakeFillerEngine.clearFieldRegistry();
-      return { filled, skipped };
+      return result;
     },
-    [isEnabled]
+    [isEnabled, syncEngine]
+  );
+
+  const replay = useCallback(
+    (snapshotId?: string) => {
+      if (!isEnabled) return { filled: 0, skipped: 0, values: {} };
+      syncEngine();
+      const result = fakeFillerEngine.replay(snapshotId);
+      fakeFillerEngine.clearFieldRegistry();
+      return result;
+    },
+    [isEnabled, syncEngine]
   );
 
   const clearFields = useCallback(() => {
     for (const field of fieldsRef.current.values()) {
-      field.setValue('');
+      const kind = field.signature.controlKind;
+      if (kind === 'switch' || kind === 'checkbox') {
+        field.setValue(false);
+      } else if (kind === 'date') {
+        field.setValue(new Date());
+      } else {
+        field.setValue('');
+      }
     }
   }, []);
 
   const fieldCount = useCallback(() => fieldsRef.current.size, []);
+  const getRegisteredFields = useCallback(() => [...fieldsRef.current.values()], []);
 
   const value = useMemo<FakeFillerContextValue>(
-    () => ({ registerField, unregisterField, fillScreen, clearFields, fieldCount }),
-    [registerField, unregisterField, fillScreen, clearFields, fieldCount]
+    () => ({
+      registerField,
+      unregisterField,
+      fillScreen,
+      clearFields,
+      fieldCount,
+      replay,
+      getRegisteredFields,
+    }),
+    [registerField, unregisterField, fillScreen, clearFields, fieldCount, replay, getRegisteredFields]
   );
 
   return <FakeFillerContext.Provider value={value}>{children}</FakeFillerContext.Provider>;
@@ -89,7 +125,7 @@ export function useFakeFillerContext(): FakeFillerContextValue | null {
  */
 export function useRegisterField(
   key: string,
-  setValue: (value: string) => void,
+  setValue: (value: FillValue) => void,
   signature: FieldSignature,
   type?: string
 ): void {
@@ -99,5 +135,17 @@ export function useRegisterField(
     ctx.registerField({ key, setValue, signature, type });
     return () => ctx.unregisterField(key);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ctx, key, signature.placeholder, signature.label, signature.accessibilityLabel, signature.testID, signature.id, signature.name, type]);
+  }, [
+    ctx,
+    key,
+    signature.placeholder,
+    signature.label,
+    signature.accessibilityLabel,
+    signature.testID,
+    signature.id,
+    signature.name,
+    signature.controlKind,
+    signature.maxLength,
+    type,
+  ]);
 }
