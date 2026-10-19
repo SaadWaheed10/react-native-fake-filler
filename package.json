@@ -1,6 +1,6 @@
 {
   "name": "react-native-fake-filler",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Intelligent, zero-config fake form filling for React Native. Auto-detects fields and populates them with realistic, unique, validation-aware fake data for development, QA, and automated testing.",
   "main": "lib/commonjs/index.js",
   "module": "lib/module/index.js",
