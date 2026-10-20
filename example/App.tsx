@@ -11,6 +11,8 @@ import {
   FFDate,
   FakeFiller,
   useShakeToFill,
+  CoverageOverlay,
+  ShareFill,
 } from 'react-native-fake-filler';
 
 function SignupScreen() {
@@ -46,11 +48,16 @@ function SignupScreen() {
       <FFDate label="Date of birth" fakeFillerType="dateOfBirth" />
 
       <Button title="⚡ Fill Form" onPress={() => FakeFiller.fillScreen()} />
+      <Button title="New user (API)" onPress={() => FakeFiller.newUser()} />
+      <Button title="Chaos fill" onPress={() => FakeFiller.chaos()} />
       <Button title="Persona: qa-adult-us" onPress={() => FakeFiller.fillPersona('qa-adult-us')} />
       <Button title="Scenario: checkout" onPress={() => FakeFiller.fillScenario('checkout')} />
       <Button title="Replay last" onPress={() => FakeFiller.replay()} />
       <Button title="Fill with seed 42" onPress={() => FakeFiller.fillScreen({ seed: 42 })} />
       <Button title="Clear" onPress={() => FakeFiller.clearScreen()} />
+      <View style={{ marginTop: 8 }}>
+        <ShareFill />
+      </View>
     </ScrollView>
   );
 }
@@ -61,6 +68,7 @@ export default function App() {
       <SafeAreaView style={styles.safeArea}>
         <SignupScreen />
       </SafeAreaView>
+      <CoverageOverlay />
       <FakeFillerDevToolbar
         onExport={(values, json) => {
           // Wire to clipboard / logger in your app

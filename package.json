@@ -1,6 +1,6 @@
 {
   "name": "react-native-fake-filler",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Intelligent, zero-config fake form filling for React Native. Auto-detects fields and populates them with realistic, unique, validation-aware fake data for development, QA, and automated testing.",
   "main": "lib/commonjs/index.js",
   "module": "lib/module/index.js",
@@ -52,12 +52,20 @@
   "peerDependencies": {
     "react": ">=17.0.0",
     "react-native": ">=0.64.0",
-    "expo-sensors": ">=12.0.0"
+    "expo-sensors": ">=12.0.0",
+    "expo-file-system": ">=15.0.0",
+    "@react-native-async-storage/async-storage": ">=1.17.0",
+    "react-native-mmkv": ">=2.0.0",
+    "@react-native-clipboard/clipboard": ">=1.11.0",
+    "expo-clipboard": ">=4.0.0"
   },
   "peerDependenciesMeta": {
-    "expo-sensors": {
-      "optional": true
-    }
+    "expo-sensors": { "optional": true },
+    "expo-file-system": { "optional": true },
+    "@react-native-async-storage/async-storage": { "optional": true },
+    "react-native-mmkv": { "optional": true },
+    "@react-native-clipboard/clipboard": { "optional": true },
+    "expo-clipboard": { "optional": true }
   },
   "devDependencies": {
     "@types/react": "^18.2.0",

@@ -1,10 +1,35 @@
 import { fakeFillerEngine } from './core/FakeFiller';
 import { detectFieldType } from './core/fieldDetector';
 import { forE2E } from './e2e/helpers';
+import { forScreenshot } from './core/screenshot';
+import { runFillFlow, type FlowStep, type FillFlowOptions } from './core/wizard';
+import { createFakeFile, createFakeFiles, materializeFakeFile } from './core/files';
+import { expectedRequestBody, matchRequestBody } from './core/network';
+import {
+  persistHistory,
+  loadPersistedHistory,
+  restoreLastFill,
+  clearPersistedHistory,
+  setPersistStorage,
+} from './core/persist';
+import { syncFromUrl, applyRemotePack } from './core/remoteSync';
+import {
+  generateOtp,
+  stubBiometric,
+  getBiometricStub,
+  promptBiometric,
+  buildDeepLink,
+  openDeepLink,
+  authFixture,
+} from './core/authStubs';
+import { createNewUser } from './core/newUser';
+import { fillReactHookForm, fillFormik, fillFinalForm } from './adapters';
 import { isRtlLocale, listLocaleCodes } from './locales/data';
+import { copyToClipboard } from './react/clipboard';
 import type { PersonaProfile } from './core/personas';
 import type { ScenarioDefinition } from './core/scenarios';
 import type {
+  ChaosKind,
   FieldSignature,
   FillOptions,
   FillValue,
@@ -159,6 +184,32 @@ export const FakeFiller = {
     return fakeFillerEngine.generateValueFor(type, undefined, options);
   },
 
+  // ---- New user (API-safe) ------------------------------------------------
+
+  /**
+   * Fills the screen with a brand-new unique user every call.
+   * Use for signup/OTP APIs that reject duplicate emails/phones.
+   */
+  newUser(options?: FillOptions) {
+    return fakeFillerEngine.newUser(options);
+  },
+
+  /** Builds a unique identity pack without filling. */
+  createNewUser(locale?: LocaleCode) {
+    return createNewUser(locale ?? fakeFillerEngine.getLocale());
+  },
+
+  // ---- Chaos / negative ---------------------------------------------------
+
+  /** Fill with intentionally bad data for negative validation tests. */
+  chaos(kind?: ChaosKind | true, options?: FillOptions) {
+    return fakeFillerEngine.fillScreen({
+      ...options,
+      chaos: kind === true || kind === undefined ? true : kind,
+      mode: 'chaos',
+    });
+  },
+
   // ---- Personas -----------------------------------------------------------
 
   fillPersona(persona: PersonaId | string, options?: FillOptions) {
@@ -214,11 +265,71 @@ export const FakeFiller = {
     return fakeFillerEngine.exportRegisteredValues();
   },
 
-  // ---- E2E ----------------------------------------------------------------
+  async copyLastFill() {
+    const json = fakeFillerEngine.exportLastFill();
+    return copyToClipboard(json);
+  },
+
+  // ---- Wizard / multi-step ------------------------------------------------
+
+  fillFlow(steps: FlowStep[], flowOptions?: FillFlowOptions) {
+    return runFillFlow(steps, (opts) => fakeFillerEngine.fillScreen(opts), flowOptions);
+  },
+
+  // ---- Form library adapters ----------------------------------------------
+
+  fillReactHookForm: fillReactHookForm,
+  fillFormik: fillFormik,
+  fillFinalForm: fillFinalForm,
+
+  // ---- Files / uploads ----------------------------------------------------
+
+  createFakeFile,
+  createFakeFiles,
+  materializeFakeFile,
+
+  // ---- Network / MSW glue -------------------------------------------------
+
+  expectedRequestBody,
+  matchRequestBody,
+
+  // ---- Persist ------------------------------------------------------------
+
+  persistHistory,
+  loadPersistedHistory,
+  restoreLastFill,
+  clearPersistedHistory,
+  setPersistStorage,
+
+  // ---- Remote persona sync ------------------------------------------------
+
+  syncFromUrl,
+  applyRemotePack,
+
+  // ---- Coverage -----------------------------------------------------------
+
+  coverageReport() {
+    return fakeFillerEngine.coverageReport();
+  },
+
+  // ---- Auth stubs ---------------------------------------------------------
+
+  generateOtp,
+  stubBiometric,
+  getBiometricStub,
+  promptBiometric,
+  buildDeepLink,
+  openDeepLink,
+  authFixture,
+
+  // ---- E2E / screenshots --------------------------------------------------
 
   /**
    * Builds a value bag for Detox / Maestro / Appium / Jest without a React tree.
    * @see forE2E
    */
   forE2E: forE2E,
+
+  /** Deterministic fixture for Storybook / visual regression screenshots. */
+  forScreenshot,
 };

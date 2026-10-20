@@ -8,6 +8,10 @@ import { FillHistory } from './history';
 import { getPersona, registerPersona, listPersonas } from './personas';
 import { getScenario, registerScenario, listScenarios, resolveScenarioOptions } from './scenarios';
 import { detectControlKind, generateControlValue, isNonTextKind } from './controls';
+import { chaosValueFor, resolveChaosKind } from './chaos';
+import { createNewUser, type NewUserIdentity } from './newUser';
+import { buildCoverageReport, type CoverageReport } from './coverage';
+import { persistHistory } from './persist';
 import type {
   FieldKey,
   FieldSignature,
@@ -123,6 +127,10 @@ export class FakeFillerEngine {
     this.history.clear();
   }
 
+  importHistory(snapshots: FillSnapshot[]): void {
+    this.history.importAll(snapshots);
+  }
+
   exportLastFill(id?: string): string {
     return this.history.exportJson(id);
   }
@@ -162,6 +170,11 @@ export class FakeFillerEngine {
     const locale = options?.locale ?? this.locale;
     const meta = metaFromSignature(signature);
     const ctxRelated = related ?? this.lastRelated;
+    const chaosKind = resolveChaosKind(options?.chaos) ?? (mode === 'chaos' ? 'mixed' : undefined);
+
+    if (chaosKind) {
+      return chaosValueFor(type, chaosKind);
+    }
 
     if (mode === 'fixed' && this.fixedValues[type] !== undefined) {
       return this.maybeValidate(this.fixedValues[type] as string, signature, meta, options);
@@ -240,6 +253,17 @@ export class FakeFillerEngine {
       }
     }
 
+    const chaos = resolveChaosKind(resolved.chaos) ?? (resolved.mode === 'chaos' ? 'mixed' : undefined);
+    if (chaos) {
+      resolved = {
+        ...resolved,
+        mode: 'chaos',
+        chaos,
+        disableRelated: true,
+        disableValidation: true,
+      };
+    }
+
     return resolved;
   }
 
@@ -278,7 +302,40 @@ export class FakeFillerEngine {
     }
 
     const snapshot = this.history.push(values, types, resolved);
+    if (resolved.persist) {
+      void persistHistory();
+    }
     return { filled, skipped, values, snapshotId: snapshot.id };
+  }
+
+  /**
+   * Fills the screen with a brand-new API-safe user (unique email/phone every call).
+   * Ideal for signup / OTP flows that reject duplicate accounts.
+   */
+  newUser(options?: FillOptions): FillResult & { user: NewUserIdentity } {
+    const user = createNewUser(options?.locale ?? this.locale);
+    this.setLocale(user.locale);
+    this.setMode('unique');
+    const result = this.fillScreen({
+      ...options,
+      mode: 'unique',
+      disableRelated: true,
+      overrides: {
+        ...user.asOverrides(),
+        ...options?.overrides,
+      },
+    });
+    return { ...result, user };
+  }
+
+  /** Builds an identity pack without filling the screen. */
+  createNewUser(locale?: LocaleCode): NewUserIdentity {
+    return createNewUser(locale ?? this.locale);
+  }
+
+  /** Detection coverage for currently registered fields. */
+  coverageReport(): CoverageReport {
+    return buildCoverageReport(this.getFields());
   }
 
   /** Fills an explicit map of { fieldName: setter } style targets, keyed by FieldKey. */
@@ -312,6 +369,9 @@ export class FakeFillerEngine {
     }
 
     const snapshot = this.history.push(values, types, resolved);
+    if (resolved.persist) {
+      void persistHistory();
+    }
     return { filled, skipped, values, snapshotId: snapshot.id };
   }
 

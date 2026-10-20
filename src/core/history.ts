@@ -60,6 +60,11 @@ export class FillHistory {
     this.snapshots = [];
   }
 
+  /** Replace in-memory history (e.g. after loading from AsyncStorage). */
+  importAll(snapshots: FillSnapshot[]): void {
+    this.snapshots = snapshots.slice(-this.limit);
+  }
+
   /** JSON-serialisable export of the latest (or specified) snapshot. */
   exportJson(id?: string): string {
     const snap = id ? this.get(id) : this.latest();

@@ -18,6 +18,10 @@ export interface UseFakeFillerResult {
   fillPersona: (persona: string, options?: FillOptions) => FillResult;
   /** Fill using a named scenario. */
   fillScenario: (scenario: string, options?: FillOptions) => FillResult;
+  /** Brand-new API-safe user every call. */
+  newUser: (options?: FillOptions) => FillResult & { user: import('../core/newUser').NewUserIdentity };
+  /** Intentional bad data for negative tests. */
+  chaos: (options?: FillOptions) => FillResult;
   /** History of recent fills for this session. */
   history: () => FillSnapshot[];
   /** Last generated values (from history). */
@@ -70,6 +74,29 @@ export function useFakeFiller(): UseFakeFillerResult {
     [fill]
   );
 
+  const newUser = useCallback(
+    (options?: FillOptions) => {
+      // Ensure provider fields are synced for newUser path via fill overrides
+      if (ctx) {
+        const user = fakeFillerEngine.createNewUser(options?.locale);
+        const result = ctx.fillScreen({
+          ...options,
+          mode: 'unique',
+          disableRelated: true,
+          overrides: { ...user.asOverrides(), ...options?.overrides },
+        });
+        return { ...result, user };
+      }
+      return fakeFillerEngine.newUser(options);
+    },
+    [ctx]
+  );
+
+  const chaos = useCallback(
+    (options?: FillOptions) => fill({ ...options, chaos: true, mode: 'chaos' }),
+    [fill]
+  );
+
   return {
     fill,
     regenerate: fill,
@@ -78,6 +105,8 @@ export function useFakeFiller(): UseFakeFillerResult {
     replay,
     fillPersona,
     fillScenario,
+    newUser,
+    chaos,
     history: () => fakeFillerEngine.getHistory(),
     lastValues: () => fakeFillerEngine.exportRegisteredValues(),
     exportJson: () => fakeFillerEngine.exportLastFill(),

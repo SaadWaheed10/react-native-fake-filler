@@ -115,7 +115,22 @@ export type LocaleCode =
   | 'zh-CN'
   | 'tr-TR';
 
-export type GenerationMode = 'unique' | 'random' | 'seeded' | 'fixed';
+export type GenerationMode = 'unique' | 'random' | 'seeded' | 'fixed' | 'chaos';
+
+/** Categories of intentionally bad / edge-case data for negative testing. */
+export type ChaosKind =
+  | 'invalid-email'
+  | 'mismatched-password'
+  | 'expired-card'
+  | 'underage'
+  | 'xss'
+  | 'sql-injection'
+  | 'emoji-name'
+  | 'oversized'
+  | 'empty'
+  | 'whitespace'
+  | 'unicode-rtl'
+  | 'mixed';
 
 /** Kind of UI control — text inputs vs toggles/pickers/dates. */
 export type ControlKind = 'text' | 'switch' | 'checkbox' | 'picker' | 'radio' | 'date';
@@ -222,6 +237,13 @@ export interface FillOptions {
   disableRelated?: boolean;
   /** Skip validation constraints (maxLength / pattern / minLength) */
   disableValidation?: boolean;
+  /**
+   * Intentionally bad / edge-case data for negative tests.
+   * When true uses 'mixed'; when a ChaosKind, applies that strategy.
+   */
+  chaos?: boolean | ChaosKind;
+  /** Persist this fill to AsyncStorage/MMKV after completion (if available). */
+  persist?: boolean;
 }
 
 export interface RegisteredField {

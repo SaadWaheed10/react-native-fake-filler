@@ -28,6 +28,18 @@ import { FakeFiller } from 'react-native-fake-filler';
 - [Fill history, replay & export](#fill-history-replay--export)
 - [Shake-to-fill](#shake-to-fill)
 - [UI-kit wrappers](#ui-kit-wrappers)
+- [New user (API-safe)](#new-user-api-safe)
+- [Chaos / negative mode](#chaos--negative-mode)
+- [Multi-step wizard fill](#multi-step-wizard-fill)
+- [Form-library adapters](#form-library-adapters)
+- [Fake files & uploads](#fake-files--uploads)
+- [Network / request body glue](#network--request-body-glue)
+- [Persist fills](#persist-fills)
+- [Remote persona sync](#remote-persona-sync)
+- [Coverage overlay](#coverage-overlay)
+- [Clipboard & QR share](#clipboard--qr-share)
+- [Auth stubs (OTP / biometric / deep link)](#auth-stubs-otp--biometric--deep-link)
+- [Screenshot fixtures](#screenshot-fixtures)
 - [Generation modes](#generation-modes)
 - [API reference](#api-reference)
 - [Custom generators & rules](#custom-generators--rules)
@@ -282,6 +294,161 @@ const FFPaperInput = createPaperTextInputWrapper(TextInput);
 
 ---
 
+## New user (API-safe)
+
+Every call creates a never-seen email/phone/username (timestamp + unique suffix) — ideal for signup/OTP APIs that reject duplicates:
+
+```tsx
+FakeFiller.newUser();
+// result.user.email → "jordan.lee.m5k2x9@example.com"
+
+const identity = FakeFiller.createNewUser('en-US'); // pack only, no fill
+```
+
+Toolbar: **New user (API)**. Prefer this over fixed personas when hitting real backends.
+
+---
+
+## Chaos / negative mode
+
+Intentionally bad data for validation UI tests:
+
+```tsx
+FakeFiller.chaos();                          // mixed strategies
+FakeFiller.chaos('invalid-email');
+FakeFiller.chaos('mismatched-password');
+FakeFiller.chaos('expired-card');
+FakeFiller.chaos('underage');
+FakeFiller.chaos('xss');
+FakeFiller.fillScreen({ chaos: 'oversized' });
+```
+
+Kinds: `invalid-email`, `mismatched-password`, `expired-card`, `underage`, `xss`, `sql-injection`, `emoji-name`, `oversized`, `empty`, `whitespace`, `unicode-rtl`, `mixed`.
+
+---
+
+## Multi-step wizard fill
+
+```tsx
+await FakeFiller.fillFlow([
+  { id: 'account', options: { scenario: 'signup' }, afterFill: () => tapNext() },
+  { id: 'address', delayMs: 300, afterFill: () => tapNext() },
+  { id: 'otp', options: { overrides: { otp: FakeFiller.generateOtp() } } },
+]);
+
+// or via hook
+const { fillFlow } = useFillFlow();
+await fillFlow([...]);
+```
+
+---
+
+## Form-library adapters
+
+```tsx
+FakeFiller.fillReactHookForm({ setValue, trigger }, {
+  fields: { email: 'email', password: 'password' },
+});
+
+FakeFiller.fillFormik(formik, { fields: { email: 'email' } });
+FakeFiller.fillFinalForm(form, { fields: { email: 'email' } });
+```
+
+---
+
+## Fake files & uploads
+
+```tsx
+const avatar = FakeFiller.createFakeFile('avatar');     // data: URI
+const idScan = await FakeFiller.materializeFakeFile('id-scan'); // writes to cache if expo-file-system present
+// kinds: avatar | id-scan | receipt | pdf | document | image
+```
+
+---
+
+## Network / request body glue
+
+```tsx
+FakeFiller.fillScreen({ scenario: 'signup' });
+const expected = FakeFiller.expectedRequestBody();
+// expected.json / expected.body — assert in MSW / Mirage / Jest
+FakeFiller.matchRequestBody(await req.json());
+```
+
+---
+
+## Persist fills
+
+Survives Metro reload when AsyncStorage or MMKV is installed:
+
+```tsx
+await FakeFiller.persistHistory();
+await FakeFiller.restoreLastFill();
+await FakeFiller.loadPersistedHistory();
+```
+
+Or `FakeFiller.fillScreen({ persist: true })`.
+
+---
+
+## Remote persona sync
+
+Share staging users via a gist / CDN JSON:
+
+```tsx
+await FakeFiller.syncFromUrl('https://gist.githubusercontent.com/.../raw/pack.json');
+FakeFiller.fillPersona('staging-user');
+```
+
+---
+
+## Coverage overlay
+
+```tsx
+import { CoverageOverlay } from 'react-native-fake-filler';
+<CoverageOverlay />
+// or
+FakeFiller.coverageReport(); // { coveragePercent, fields, ... }
+```
+
+Shows detected vs skipped fields so you know when detection missed something.
+
+---
+
+## Clipboard & QR share
+
+```tsx
+import { ShareFill } from 'react-native-fake-filler';
+<ShareFill onShare={(json) => console.log(json)} />
+await FakeFiller.copyLastFill();
+```
+
+---
+
+## Auth stubs (OTP / biometric / deep link)
+
+```tsx
+FakeFiller.generateOtp();                    // "482913"
+FakeFiller.stubBiometric('success');
+await FakeFiller.promptBiometric();
+const link = FakeFiller.buildDeepLink({ scheme: 'myapp', token: 'abc' });
+await FakeFiller.openDeepLink(link);
+const auth = FakeFiller.authFixture({ scheme: 'myapp' }); // { otp, token, deepLink }
+```
+
+---
+
+## Screenshot fixtures
+
+Deterministic data for Storybook / visual regression:
+
+```tsx
+const fx = FakeFiller.forScreenshot({ persona: 'qa-adult-us', seed: 42 });
+// fx.values / fx.title stay stable across CI runs
+```
+
+---
+
 ## Generation modes
 
 ### Unique (default)
@@ -372,6 +539,16 @@ FakeFiller.registerScenario / listScenarios
 FakeFiller.history() / replay(id?) / clearHistory()
 FakeFiller.exportJson(id?) / exportEnv(id?) / lastValues()
 FakeFiller.forE2E(options?)
+FakeFiller.forScreenshot(options?)
+FakeFiller.newUser(options?) / createNewUser(locale?)
+FakeFiller.chaos(kind?)
+FakeFiller.fillFlow(steps)
+FakeFiller.fillReactHookForm / fillFormik / fillFinalForm
+FakeFiller.createFakeFile / materializeFakeFile
+FakeFiller.expectedRequestBody / matchRequestBody
+FakeFiller.persistHistory / restoreLastFill / syncFromUrl
+FakeFiller.coverageReport()
+FakeFiller.generateOtp / stubBiometric / buildDeepLink / openDeepLink
 ```
 
 `FillOptions`:

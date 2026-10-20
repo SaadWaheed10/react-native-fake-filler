@@ -85,10 +85,43 @@ export function FakeFillerDevToolbar({
               label="Fill Form"
               onPress={() => fill(defaultScenario ? { scenario: defaultScenario } : undefined)}
             />
+            <ToolbarButton
+              label="New user (API)"
+              onPress={() => {
+                const result = fakeFillerEngine.newUser();
+                Alert.alert('New user', result.user.email);
+              }}
+            />
+            <ToolbarButton
+              label="Chaos fill"
+              onPress={() => fill({ chaos: true, mode: 'chaos' })}
+            />
             <ToolbarButton label="Regenerate" onPress={() => regenerate()} />
             <ToolbarButton label="Clear Form" onPress={() => clear()} />
             <ToolbarButton label="Replay last" onPress={doReplay} />
             <ToolbarButton label="Export JSON" onPress={doExport} />
+            <ToolbarButton
+              label="Persist history"
+              onPress={async () => {
+                const { persistHistory } = await import('../core/persist');
+                const ok = await persistHistory();
+                Alert.alert('FakeFiller', ok ? 'History saved.' : 'No storage available (install AsyncStorage or MMKV).');
+              }}
+            />
+            <ToolbarButton
+              label="Coverage"
+              onPress={() => {
+                const report = fakeFillerEngine.coverageReport();
+                Alert.alert(
+                  'Coverage',
+                  `${report.coveragePercent}% · ${report.detected}/${report.total} detected\n` +
+                    report.fields
+                      .slice(0, 8)
+                      .map((f) => `${f.status === 'detected' ? '✓' : '–'} ${f.detectedType ?? 'skipped'}`)
+                      .join('\n')
+                );
+              }}
+            />
             <ToolbarButton
               label={showScenarios ? 'Hide scenarios' : 'Scenarios…'}
               onPress={() => setShowScenarios((s) => !s)}
